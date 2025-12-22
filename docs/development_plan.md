@@ -1,61 +1,88 @@
-# 3D 가위바위보 - 개발 계획
+# 3D 가위바위보 - 개발 계획 (OOP & RxJS)
 
 ## 1. 프로젝트 개요
-**목표**: Babylon.js를 사용하여 웹 기반 3D 가위바위보 게임 제작.
+**목표**: Babylon.js와 RxJS를 활용한 리액티브 3D 가위바위보 게임 제작.
 **타겟 플랫폼**: 모바일 및 웹 브라우저.
-**컨셉**: 사용자가 컴퓨터와 가위바위보 대결을 펼치는 3D 게임기 인터페이스.
+**컨셉**: 3D 게임기 인터페이스. 틸트/파괴/해킹 등 자유도가 높은 상호작용 제공.
 
 ## 2. 기술 스택
-- **엔진**: Babylon.js (Core, Inspector, Loaders)
-- **언어**: TypeScript
+- **엔진**: Babylon.js
+- **언어**: TypeScript (Strict OOP)
+- **상태 관리**: RxJS (BehaviorSubject, Observable)
 - **번들러**: Vite
 - **패키지 매니저**: npm/bun
 
-## 3. 아키텍처
+## 3. 아키텍처 (Reactive Service Pattern)
 
-### 3.1 핵심 클래스
-- **`App`**: 메인 진입점. 엔진/씬 초기화 및 렌더 루프 처리.
-- **`GameManager`**: 게임 상태(시작, 진행 중, 결과) 및 규칙 관리.
-- **`AssetLoader`**: 3D 모델(게임기, 손 동작) 로딩 처리.
-- **`UIManager`**: Babylon.js GUI를 사용한 2D 오버레이 (점수, 시작 버튼, 메시지).
+### 3.1 Core Services (Singleton/DI)
+- **`GameStore`**: 게임 전역 상태 (점수, 승패) 및 기계 상태 (파손, 해킹 모드) 관리.
+- **`SceneService`**: Babylon.js 엔진 관리. `ArcRotateCamera`를 사용하여 게임기 중심의 자유로운 시점 조작(Rotate/Zoom) 구현.
+- **`InputService`**: 마우스/터치 및 디바이스 모션(기울기/흔들기) 감지 스트림.
+- **`AudioService`**: Babylon.js `Sound` 객체를 래핑하여 효과음/배경음 관리.
 
-### 3.2 게임 상태 (Game States)
-1.  **대기 (Idle)**: 게임기가 플레이어의 입력을 기다리는 상태.
-2.  **선택 (Selection)**: 플레이어가 가위, 바위, 보 중 하나를 선택 (3D 버튼 또는 UI).
-3.  **애니메이션 (Animation)**: 손이 흔들리거나 결과를 보여주는 애니메이션 재생.
-4.  **결과 (Result)**: 승/패/무승부 계산 및 표시.
-5.  **초기화 (Reset)**: 대기 상태로 돌아가기 전 쿨다운.
+### 3.2 Domain Objects (OOP)
+- **`Hand`**: 3D 손 모델.
+- **`GameMachine`**: 게임기 본체. 
+    - 부품(나사, 패널)별 파괴/해킹 로직 포함.
+    - `tilt()`: 기울임 처리에 따른 물리/시각 효과.
+    - `hack()`: 내부 회로 조작 시 게임 로직 변조.
+
+### 3.3 Game Flow (RxJS Stream)
+1.  **Input Stream**: 3D 모델 클릭 -> `choice$` Subject 발행.
+2.  **State Stream**: `choice$` 구독 -> `GameStore` 상태 업데이트 (IDLE -> ANIMATING).
+3.  **Render Loop**: `state$` 변화에 따라 씬 내 객체(뷰) 업데이트.
 
 ## 4. 에셋 요구사항
-### 1단계 (프로토타입 - Primitives)
-- **플레이어/CPU**: 가위/바위/보 텍스처가 입혀진 큐브 또는 구체.
-- **환경**: 기본적인 바닥(Plane) 및 조명.
+### 1단계 (프로토타입)
+- **Primitives**: 큐브/구체로 가위/바위/보 표현.
+- **Camera**: `ArcRotateCamera`로 360도 회전/줌 기능 구현.
+- **Interactive Parts**: 클릭 가능한 '나사' 역할을 하는 작은 구체 배치.
 
 ### 2단계 (폴리싱)
-- **게임기**: 아케이드 캐비닛 스타일 또는 미래형 콘솔.
-- **손 모델**: 애니메이션이 포함된 3D 손 (가위/바위/보 포즈 리깅).
-- **이펙트**: 승리/패배 시 파티클 효과.
+- **Models**: 분해 가능한 게임기 모델 (나사, 케이스 분리).
+- **Audio**: Babylon.js Sound 적용 (나사 풀기, 기계 충격, BGM).
+- **Hacking UI**: 해킹 성공 시 글리치 효과.
 
 ## 5. 구현 로드맵
-1.  **프로젝트 설정** (완료): Vite를 이용한 기본 Babylon.js 씬 구성.
-2.  **게임 로직 명세**: 정확한 규칙 및 상태 전이 정의.
-3.  **프로토타입 구현**:
-    -   `GameManager` 구현.
-    -   입력을 위한 기본 UI.
-    -   콘솔에 결과 출력.
-4.  **3D 통합**:
-    -   UI 입력을 3D 상호작용(레이캐스팅)으로 대체.
-    -   간단한 애니메이션 추가.
-5.  **다듬기 (Polish)**:
-    -   최종 메쉬 임포트.
-    -   사운드 및 시각 효과 추가.
+1.  **설정**: RxJS 설치 및 기본 구조 잡기.
+2.  **Core 구현**: `GameStore`, `SceneService` 클래스 구현.
+3.  **로직 연결**: `InputService` -> `GameStore` 흐름 연결.
+4.  **3D 바인딩**: 상태 스트림을 구독하여 3D 객체 제어.
 
-## 6. 디렉토리 구조
+## 6. 디렉토리 구조 및 코드 기법 (구현 현황)
+
+### 디렉토리 구조
 ```
 src/
-  ├── assets/        # 3D 모델, 텍스처, 사운드
-  ├── logic/         # 게임 규칙 및 상태 머신
-  ├── ui/            # GUI 컴포넌트
-  ├── app.ts         # 메인 진입점
-  └── style.css      # 기본 스타일
+  ├── core/            # 핵심 엔진 코드 (Singleton)
+  │   └── SceneService.ts   # Babylon.js 엔진/씬/카메라 라이프사이클 관리
+  ├── store/           # 상태 관리 (RxJS Store)
+  │   └── GameStore.ts      # 게임의 전역 상태(코인, 결과 등)를 관리하는 Single Source of Truth
+  ├── services/        # 비즈니스 로직 및 유틸리티 (Singleton)
+  │   ├── AudioService.ts   # 효과음/배경음 관리
+  │   ├── InputService.ts   # 입력(터치, 모션 등)을 RxJS 스트림으로 변환
+  │   └── RpsGameService.ts # 가위바위보 승패 판정 및 게임 진행 로직
+  ├── models/          # 3D 객체 및 도메인 모델
+  │   ├── GameMachine.ts    # 게임기 본체 (3D 메쉬 + 틸트/상호작용 로직)
+  │   └── Hand.ts           # 가위바위보 손 모델
+  ├── app.ts           # 메인 진입점 (View 역할, 서비스 연결)
+  └── style.css
 ```
+
+### 적용된 코드 기법 (Design Patterns)
+1.  **Reactive Service Pattern (RxJS)**:
+    -   `GameStore`를 통해 상태를 `BehaviorSubject`로 관리하고 `Observable`로 노출.
+    -   UI와 로직이 이벤트를 구독(Subscribe)하여 상태 변화에 반응형으로 동작.
+
+2.  **Singleton Pattern (싱글톤 패턴)**:
+    -   `GameStore`, `SceneService`, `InputService` 등 주요 서비스 클래스를 싱글톤으로 구현하여 전역에서 유일한 인스턴스 보장 및 접근 용이성 확보.
+
+3.  **Encapsulation (캡슐화 - OOP)**:
+    -   `GameMachine`, `Hand`와 같은 도메인 객체가 자신의 3D 메쉬와 관련된 동작(틸트, 애니메이션 등)을 내부 메서드로 관리하고 외부에는 필요한 인터페이스만 노출.
+
+4.  **Separation of Concerns (관심사 분리)**:
+    -   **View**: `app.ts` (화면 표시, UI 생성)
+    -   **State**: `GameStore.ts` (데이터 관리)
+    -   **Logic**: `RpsGameService.ts` (게임 규칙)
+    -   **Core**: `SceneService.ts` (엔진 제어)
+
